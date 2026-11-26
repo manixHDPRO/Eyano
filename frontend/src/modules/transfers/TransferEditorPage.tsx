@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Alert } from "../../components/ui/Alert";
@@ -23,13 +23,18 @@ import {
   validateTransfer,
 } from "../../lib/api/transfers";
 import { fetchWarehouses } from "../../lib/api/warehouses";
-import type { TransferCatalogItem, TransferListItem } from "../../lib/api/types";
+import type { TransferCatalogItem, TransferDetail, TransferListItem } from "../../lib/api/types";
 import { hasPermission } from "../../lib/auth/permissions";
 import { useAuth } from "../auth/AuthProvider";
 import { Pagination } from "../../components/ui/Pagination";
 import { useClientPagination } from "../../lib/pagination/client-pagination";
 import { TransferReceiveModal } from "./TransferReceiveModal";
-import { TransferTimeline } from "./TransferTimeline";
+import { TransferShipPrint } from "./TransferShipPrint";
+import {
+  buildTransferShipPrintPayload,
+  canPrintTransferShipFiche,
+  type TransferShipPrintPayload,
+} from "./transfer-ship-print-data";
 import { personName, transferStatusLabel, transferStatusTone } from "./transfer-status";
 
 type DraftLine = {
@@ -71,6 +76,7 @@ export function TransferEditorPage() {
   const [receivedQty, setReceivedQty] = useState<Record<string, number>>({});
   const [cancelReason, setCancelReason] = useState("");
   const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [shipPrintPayload, setShipPrintPayload] = useState<TransferShipPrintPayload | null>(null);
 
   const catalogQuery = useQuery({
     queryKey: ["transfer-catalog", storeId, warehouseId, productSearch],
@@ -90,9 +96,16 @@ export function TransferEditorPage() {
     }
   }, [warehousesQuery.data, isNew, warehouseId]);
 
+  const lastHydratedKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     const detail = detailQuery.data;
     if (!detail) return;
+    const hydrationKey = `${detail.id}:${detail.updatedAt}`;
+    if (detail.status === "DRAFT" && lastHydratedKeyRef.current === hydrationKey) {
+      return;
+    }
+    lastHydratedKeyRef.current = hydrationKey;
     setWarehouseId(detail.warehouse.id);
     setStoreId(detail.store.id);
     setNote(detail.note ?? "");
@@ -205,9 +218,13 @@ export function TransferEditorPage() {
 
   const shipMutation = useMutation({
     mutationFn: () => shipTransfer(id!),
-    onSuccess: async () => {
+    onSuccess: async (detail: TransferDetail) => {
       await invalidate();
-      pushToast({ tone: "success", message: "Expédié — le stock physique a quitté l’entrepôt." });
+      setShipPrintPayload(buildTransferShipPrintPayload(detail));
+      pushToast({
+        tone: "success",
+        message: "Expédié — imprimez la fiche de transfert (caissière, témoin, expéditeur).",
+      });
     },
     onError: (error) => pushToast({ tone: "error", message: formatApiErrorMessage(error, "Expédition impossible.") }),
   });
@@ -275,12 +292,21 @@ export function TransferEditorPage() {
   async function handleShip() {
     const accepted = await confirm({
       title: "Expédier",
-      message: "Sortie physique de l’entrepôt et libération de la réservation. Cette étape n’est pas annulable.",
+      message:
+        "Sortie physique de l’entrepôt et libération de la réservation. La fiche de transfert (3 signatures) sera proposée à l’impression. Cette étape n’est pas annulable.",
       confirmLabel: "Expédier",
       tone: "danger",
     });
     if (!accepted) return;
     void shipMutation.mutateAsync();
+  }
+
+  function handlePrintShipFiche() {
+    const detail = detailQuery.data;
+    if (!detail) {
+      return;
+    }
+    setShipPrintPayload(buildTransferShipPrintPayload(detail));
   }
 
   async function handleCancel() {
@@ -345,9 +371,14 @@ export function TransferEditorPage() {
     : "Cycle officiel d’approvisionnement boutique. Seuls les produits déjà autorisés dans la boutique destinataire peuvent voyager.";
 
   const canAccuseReception = canReceive && status === "SHIPPED" && Boolean(detailQuery.data);
+  const canPrintShipFiche =
+    !isNew && Boolean(detailQuery.data) && canPrintTransferShipFiche(status) && (canShip || canValidate);
 
   return (
     <div className="space-y-6">
+      {shipPrintPayload ? (
+        <TransferShipPrint payload={shipPrintPayload} onPrinted={() => setShipPrintPayload(null)} />
+      ) : null}
       <PageHeader
         eyebrow="Stocks"
         title={title}
@@ -371,8 +402,6 @@ export function TransferEditorPage() {
           </p>
         </div>
       ) : null}
-
-      {!isNew ? <TransferTimeline status={status} /> : null}
 
       <section className="grid gap-4 lg:grid-cols-12">
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-4">
@@ -679,6 +708,12 @@ export function TransferEditorPage() {
         {canAccuseReception ? (
           <Button disabled={receiveMutation.isPending} onClick={() => setShowReceiveModal(true)}>
             Accuser réception
+          </Button>
+        ) : null}
+
+        {canPrintShipFiche ? (
+          <Button variant="ghost" disabled={shipMutation.isPending} onClick={handlePrintShipFiche}>
+            Imprimer la fiche de transfert
           </Button>
         ) : null}
 

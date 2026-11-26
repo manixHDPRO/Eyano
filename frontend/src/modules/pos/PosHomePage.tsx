@@ -13,6 +13,7 @@ import { closeCashSession, fetchCurrentCashSession, openCashSession } from "../.
 import { lookupBarcode } from "../../lib/api/barcodes";
 import { fetchCurrentExchangeRates } from "../../lib/api/exchange-rates";
 import { DEFAULT_ENCAISSEMENT_CDF_PER_USD } from "../../lib/money/exchange-rate-defaults";
+import { LIVE_SYNC_STALE_TIME_MS } from "../../lib/query/live-sync";
 import { fetchPosCatalog, fetchPosDailySalesReport, fetchPosWorkspace } from "../../lib/api/pos";
 import { createSale, fetchSale, fetchSales } from "../../lib/api/sales";
 import { formatApiErrorMessage } from "../../lib/api/errors";
@@ -126,7 +127,7 @@ export function PosHomePage() {
     queryKey: ["exchange-rates-current"],
     queryFn: fetchCurrentExchangeRates,
     enabled: Boolean(sessionQuery.data),
-    staleTime: 60_000,
+    staleTime: LIVE_SYNC_STALE_TIME_MS,
   });
 
   const encaissementRate = ratesQuery.data?.encaissement?.rate ?? DEFAULT_ENCAISSEMENT_CDF_PER_USD;

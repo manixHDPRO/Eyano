@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { fetchNotifications } from "../../lib/api/notifications";
+import { resolvePosRefetchInterval } from "../../lib/query/live-sync";
 
 type PosTransferShippedAlertProps = {
   storeId: string | null;
@@ -26,7 +27,7 @@ export function PosTransferShippedAlert({
         pageSize: 5,
       }),
     enabled: pollEnabled && Boolean(alertStoreId),
-    refetchInterval: 15_000,
+    refetchInterval: () => resolvePosRefetchInterval(),
     refetchOnWindowFocus: true,
   });
 

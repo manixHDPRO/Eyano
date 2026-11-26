@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Alert } from "../../components/ui/Alert";
 import { inputClassName } from "../../components/ui/FormField";
 import { Pagination } from "../../components/ui/Pagination";
@@ -8,6 +8,7 @@ import { useToast } from "../../components/ui/Toast";
 import { formatApiErrorMessage } from "../../lib/api/errors";
 import {
   cancelTransfer,
+  fetchTransfer,
   fetchTransfers,
   prepareTransfer,
   receiveTransfer,
@@ -15,11 +16,17 @@ import {
   submitTransfer,
   validateTransfer,
 } from "../../lib/api/transfers";
-import type { TransferListItem } from "../../lib/api/types";
+import type { TransferDetail, TransferListItem } from "../../lib/api/types";
 import { hasPermission } from "../../lib/auth/permissions";
 import { useAuth } from "../auth/AuthProvider";
 import { TransferCreateModal } from "./TransferCreateModal";
 import { TransferReceiveModal } from "./TransferReceiveModal";
+import { TransferShipPrint } from "./TransferShipPrint";
+import {
+  buildTransferShipPrintPayload,
+  canPrintTransferShipFiche,
+  type TransferShipPrintPayload,
+} from "./transfer-ship-print-data";
 import { transferStatusLabel } from "./transfer-status";
 
 const STATUS_FILTERS: Array<{ value: string; label: string }> = [
@@ -62,6 +69,8 @@ export function TransfersListPage({ posReceiveMode = false }: TransfersListPageP
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [shipPrintPayload, setShipPrintPayload] = useState<TransferShipPrintPayload | null>(null);
+  const [printBusyId, setPrintBusyId] = useState<string | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["transfers", page, status, search],
@@ -97,8 +106,16 @@ export function TransfersListPage({ posReceiveMode = false }: TransfersListPageP
         }
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (data, variables) => {
       await invalidate();
+      if (variables.type === "ship") {
+        setShipPrintPayload(buildTransferShipPrintPayload(data as TransferDetail));
+        pushToast({
+          tone: "success",
+          message: "Expédié — imprimez la fiche de transfert (caissière, témoin, expéditeur).",
+        });
+        return;
+      }
       pushToast({ tone: "success", message: "Statut du transfert mis à jour." });
     },
     onError: (error) => pushToast({ tone: "error", message: formatApiErrorMessage(error, "Action impossible.") }),
@@ -134,6 +151,18 @@ export function TransfersListPage({ posReceiveMode = false }: TransfersListPageP
   const errorMessage = listQuery.isError ? formatApiErrorMessage(listQuery.error, "Chargement impossible.") : null;
   const items = listQuery.data?.items ?? [];
 
+  const handleReprintShipFiche = async (transferId: string) => {
+    setPrintBusyId(transferId);
+    try {
+      const detail = await fetchTransfer(transferId);
+      setShipPrintPayload(buildTransferShipPrintPayload(detail));
+    } catch (error) {
+      pushToast({ tone: "error", message: formatApiErrorMessage(error, "Impossible de préparer l’impression.") });
+    } finally {
+      setPrintBusyId(null);
+    }
+  };
+
   const title = cashierReceiveOnly ? "Réception des transferts en boutique" : "Transferts Entrepôt → Boutiques";
   const subtitle = cashierReceiveOnly
     ? "Vérifiez les quantités expédiées puis confirmez la réception pour mettre à jour le stock de votre boutique."
@@ -141,6 +170,9 @@ export function TransfersListPage({ posReceiveMode = false }: TransfersListPageP
 
   return (
     <div className="space-y-6">
+      {shipPrintPayload ? (
+        <TransferShipPrint payload={shipPrintPayload} onPrinted={() => setShipPrintPayload(null)} />
+      ) : null}
       <Block className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
@@ -170,9 +202,6 @@ export function TransfersListPage({ posReceiveMode = false }: TransfersListPageP
           >
             {showFilters ? "Masquer les filtres" : "Filtres et recherche"}
           </button>
-          <Link to="/admin/transfers/new" className="text-xs text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline">
-            Éditeur brouillon avancé
-          </Link>
         </Block>
       ) : null}
 
@@ -227,10 +256,13 @@ export function TransfersListPage({ posReceiveMode = false }: TransfersListPageP
               canShip={canShip}
               canReceive={canReceive}
               canCancel={canCancel}
+              canPrintShipFiche={canPrintTransferShipFiche(transfer.status)}
+              printBusy={printBusyId === transfer.id}
               actionBusy={actionMutation.isPending || cancelMutation.isPending}
               onAction={(type) => void actionMutation.mutateAsync({ type, id: transfer.id })}
               onReceive={() => setReceivingTransfer(transfer)}
               onCancel={() => void cancelMutation.mutateAsync(transfer.id)}
+              onPrintShipFiche={() => void handleReprintShipFiche(transfer.id)}
             />
           ))}
           {items.length === 0 ? (
@@ -284,10 +316,13 @@ function TransferCard(props: {
   canShip: boolean;
   canReceive: boolean;
   canCancel: boolean;
+  canPrintShipFiche: boolean;
+  printBusy: boolean;
   actionBusy: boolean;
   onAction: (type: "submit" | "validate" | "prepare" | "ship") => void;
   onReceive: () => void;
   onCancel: () => void;
+  onPrintShipFiche: () => void;
 }) {
   const { transfer } = props;
   const showReceive = props.canReceive && transfer.status === "SHIPPED";
@@ -312,6 +347,18 @@ function TransferCard(props: {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {props.canPrintShipFiche ? (
+            <button
+              type="button"
+              disabled={props.printBusy || props.actionBusy}
+              onClick={props.onPrintShipFiche}
+              title="Imprimer la fiche de transfert (expédition)"
+              aria-label={`Imprimer la fiche du transfert ${transfer.reference}`}
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
+            >
+              <PrinterIcon className="size-4" />
+            </button>
+          ) : null}
           {transfer.status === "DRAFT" && props.canCreate ? (
             <ActionButton disabled={props.actionBusy} onClick={() => props.onAction("submit")}>
               Soumettre
@@ -443,6 +490,25 @@ function ArrowRightLeftIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M7 7h10M17 7l-3-3M17 7l-3 3M17 17H7M7 17l3 3M7 17l3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PrinterIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" />
+      <rect x="6" y="14" width="12" height="8" rx="1" />
     </svg>
   );
 }

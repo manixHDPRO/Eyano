@@ -13,6 +13,7 @@ import {
 import type { ExpenseCategoryCode } from "../../lib/api/types";
 import { fetchCurrentExchangeRates } from "../../lib/api/exchange-rates";
 import { DEFAULT_DECAISSEMENT_CDF_PER_USD } from "../../lib/money/exchange-rate-defaults";
+import { LIVE_SYNC_STALE_TIME_MS } from "../../lib/query/live-sync";
 import { formatCdf, formatUsd } from "../catalog/money";
 import { EXPENSE_CATEGORY_OPTIONS } from "./expense-labels";
 
@@ -35,7 +36,7 @@ export function ExpenseCreateModal({ open, onClose }: ExpenseCreateModalProps) {
     queryKey: ["exchange-rates-current"],
     queryFn: fetchCurrentExchangeRates,
     enabled: open,
-    staleTime: 60_000,
+    staleTime: LIVE_SYNC_STALE_TIME_MS,
   });
 
   const [locationKey, setLocationKey] = useState("");

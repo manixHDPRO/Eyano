@@ -1,4 +1,5 @@
 import { clearAccessToken, getAccessToken, setAccessToken } from "../auth/session-store";
+import { reconnectLiveSyncSocketWithFreshToken } from "../live-sync/live-sync-socket";
 import { ApiError, isApiErrorBody } from "./errors";
 import type { AuthResponse } from "./types";
 
@@ -41,6 +42,7 @@ async function refreshAccessToken(): Promise<string | null> {
     }
     const payload = (await response.json()) as AuthResponse;
     setAccessToken(payload.accessToken);
+    reconnectLiveSyncSocketWithFreshToken();
     return payload.accessToken;
   })().finally(() => {
     refreshInFlight = null;

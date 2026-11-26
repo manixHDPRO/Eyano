@@ -312,6 +312,15 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         palier: "19",
         description: "Rapports commerciaux, stock et financiers, exports PDF et Excel.",
       },
+      {
+        id: "reports-top-selling",
+        label: "Top ventes boutique",
+        to: "/admin/reports/top-selling",
+        permissions: ["reports.read"],
+        implemented: true,
+        palier: "19",
+        description: "Produits les plus vendus par quantité pour une boutique sélectionnée, avec impression.",
+      },
     ],
   },
   {

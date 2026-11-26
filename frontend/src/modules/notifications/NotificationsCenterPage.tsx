@@ -54,7 +54,6 @@ export function NotificationsCenterPage() {
         type: typeFilter || undefined,
         unreadOnly: unreadOnly || undefined,
       }),
-    refetchInterval: 45_000,
   });
 
   const markAllMutation = useMutation({

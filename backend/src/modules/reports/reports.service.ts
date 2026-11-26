@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpStatus, Injectable } from "@nestjs/common";
 import {
   CashSessionStatus,
   CurrencyCode,
@@ -12,10 +12,12 @@ import {
   TransferStatus,
 } from "@prisma/client";
 import { AccessService } from "../../common/access/access.service";
+import { ApiException } from "../../common/exceptions/api.exception";
 import type { AuthUser } from "../../common/types/auth-user";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SETTING_STOCK_ALERT_DEFAULT } from "../stock-movements/stock-movements.constants";
 import type { ReportsOverviewQueryDto } from "./dto/reports-overview.query.dto";
+import type { ReportsTopProductsQueryDto } from "./dto/reports-top-products.query.dto";
 import type {
   ReportsActiveTransfer,
   ReportsCashVariance,
@@ -25,6 +27,7 @@ import type {
   ReportsStockSection,
   ReportsStoreRow,
   ReportsTopProduct,
+  ReportsTopProductsResponse,
   ReportsTransfersSection,
 } from "./reports.types";
 
@@ -39,6 +42,7 @@ const ACTIVE_TRANSFER_STATUSES: TransferStatus[] = [
 ];
 const ACTIVE_TRANSFERS_PREVIEW = 8;
 const TOP_PRODUCTS_LIMIT = 25;
+const TOP_PRODUCTS_BY_QTY_DEFAULT = 100;
 const RECENT_SALES_LIMIT = 12;
 
 @Injectable()
@@ -242,7 +246,7 @@ export class ReportsService {
       };
     });
 
-    const topProducts = buildTopProducts(saleItems);
+    const topProducts = buildTopProducts(saleItems, { sortBy: "revenue", limit: TOP_PRODUCTS_LIMIT });
 
     const stock = canStock
       ? await this.buildStockSection(actor, isGlobalScope, showWarehouse, storeFilter)
@@ -286,6 +290,63 @@ export class ReportsService {
       cashVariances: cashSessions,
       recentSales,
       activeTransfers,
+    };
+  }
+
+  async topProductsByQuantity(
+    actor: AuthUser,
+    query: ReportsTopProductsQueryDto,
+  ): Promise<ReportsTopProductsResponse> {
+    const context = await this.access.loadContext(actor.id);
+    const isGlobalScope = context.isGlobalScope;
+    const storeScope = this.buildStoreScope(actor, isGlobalScope);
+    const storeFilter = query.storeId.trim();
+
+    const store = await this.prisma.store.findFirst({
+      where: { id: storeFilter, ...storeScope },
+      select: { id: true, code: true, name: true },
+    });
+    if (!store) {
+      throw new ApiException("STORE_NOT_FOUND", "Boutique introuvable ou hors périmètre.", HttpStatus.NOT_FOUND);
+    }
+
+    const completedAt = buildCompletedAtFilter(query.from, query.to);
+    const saleScopeBase = this.buildSaleScope(actor, isGlobalScope);
+    const saleWhere: Prisma.SaleWhereInput = {
+      ...saleScopeBase,
+      status: SaleStatus.COMPLETED,
+      storeId: storeFilter,
+      ...(completedAt ? { completedAt } : {}),
+    };
+
+    const saleItems = await this.prisma.saleItem.findMany({
+      where: { sale: saleWhere },
+      select: {
+        productId: true,
+        referenceSnapshot: true,
+        nameSnapshot: true,
+        quantity: true,
+        lineTotal: true,
+        purchasePriceSnapshot: true,
+      },
+    });
+
+    const limit = query.limit ?? TOP_PRODUCTS_BY_QTY_DEFAULT;
+    const items = buildTopProducts(saleItems, { sortBy: "qty", limit });
+
+    const totalQtySold = items.reduce((acc, row) => acc + row.qtySold, 0);
+    const totalRevenueUsd = roundMoney(items.reduce((acc, row) => acc + row.revenueUsd, 0));
+
+    return {
+      generatedAt: new Date().toISOString(),
+      period: {
+        from: query.from ?? null,
+        to: query.to ?? null,
+      },
+      store,
+      items,
+      totalQtySold,
+      totalRevenueUsd,
     };
   }
 
@@ -523,6 +584,8 @@ export class ReportsService {
   }
 }
 
+type TopProductsSortBy = "revenue" | "qty";
+
 function buildTopProducts(
   saleItems: Array<{
     productId: string;
@@ -532,7 +595,10 @@ function buildTopProducts(
     lineTotal: Prisma.Decimal;
     purchasePriceSnapshot: Prisma.Decimal;
   }>,
+  options?: { sortBy?: TopProductsSortBy; limit?: number },
 ): ReportsTopProduct[] {
+  const sortBy = options?.sortBy ?? "revenue";
+  const limit = options?.limit ?? TOP_PRODUCTS_LIMIT;
   const map = new Map<string, ReportsTopProduct>();
 
   for (const row of saleItems) {
@@ -553,8 +619,13 @@ function buildTopProducts(
   }
 
   return [...map.values()]
-    .sort((a, b) => b.revenueUsd - a.revenueUsd || b.qtySold - a.qtySold)
-    .slice(0, TOP_PRODUCTS_LIMIT)
+    .sort((a, b) => {
+      if (sortBy === "qty") {
+        return b.qtySold - a.qtySold || b.revenueUsd - a.revenueUsd;
+      }
+      return b.revenueUsd - a.revenueUsd || b.qtySold - a.qtySold;
+    })
+    .slice(0, limit)
     .map((row) => ({
       ...row,
       revenueUsd: roundMoney(row.revenueUsd),

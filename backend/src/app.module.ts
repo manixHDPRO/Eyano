@@ -39,6 +39,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SequencesModule } from "./common/sequences/sequences.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { LiveSyncModule } from "./modules/live-sync/live-sync.module";
 
 const optionalModules =
   process.env.NODE_ENV !== "production" || process.env.ENABLE_ACCESS_DEMO === "true" ? [AccessDemoModule] : [];
@@ -83,6 +84,7 @@ const optionalModules =
     SuppliersModule,
     DashboardModule,
     ReportsModule,
+    LiveSyncModule,
     ...optionalModules,
   ],
   providers: [

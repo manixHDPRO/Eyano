@@ -6,6 +6,7 @@ import { fetchCurrentExchangeRates } from "../../lib/api/exchange-rates";
 import { fetchNotificationUnreadCount } from "../../lib/api/notifications";
 import { fetchPosWorkspace } from "../../lib/api/pos";
 import { DEFAULT_ENCAISSEMENT_CDF_PER_USD, formatCdfPerUsd } from "../../lib/money/exchange-rate-defaults";
+import { LIVE_SYNC_STALE_TIME_MS, resolvePosRefetchInterval } from "../../lib/query/live-sync";
 import { canReadAppNotifications } from "../../lib/auth/notification-access";
 import { hasPermission } from "../../lib/auth/permissions";
 import { useAuth } from "../../modules/auth/AuthProvider";
@@ -19,7 +20,7 @@ export function PosLayout() {
   const ratesQuery = useQuery({
     queryKey: ["exchange-rates-current"],
     queryFn: fetchCurrentExchangeRates,
-    staleTime: 60_000,
+    staleTime: LIVE_SYNC_STALE_TIME_MS,
   });
   const enc = ratesQuery.data?.encaissement?.rate ?? DEFAULT_ENCAISSEMENT_CDF_PER_USD;
 
@@ -27,7 +28,7 @@ export function PosLayout() {
     queryKey: ["pos-workspace"],
     queryFn: fetchPosWorkspace,
     enabled: canReadNotifications || canReceiveTransfers,
-    staleTime: 60_000,
+    staleTime: LIVE_SYNC_STALE_TIME_MS,
   });
 
   const alertStoreId =
@@ -41,7 +42,7 @@ export function PosLayout() {
         type: "TRANSFER_SHIPPED",
       }),
     enabled: canReadNotifications && Boolean(alertStoreId),
-    refetchInterval: 15_000,
+    refetchInterval: () => resolvePosRefetchInterval(),
     refetchOnWindowFocus: true,
   });
 
@@ -53,7 +54,7 @@ export function PosLayout() {
         type: "INTERNAL_ISSUE_PENDING",
       }),
     enabled: canReadNotifications && Boolean(alertStoreId),
-    refetchInterval: 15_000,
+    refetchInterval: () => resolvePosRefetchInterval(),
     refetchOnWindowFocus: true,
   });
 
@@ -65,7 +66,7 @@ export function PosLayout() {
         type: "EXPENSE_DRAWER_PENDING",
       }),
     enabled: canReadNotifications && Boolean(alertStoreId),
-    refetchInterval: 15_000,
+    refetchInterval: () => resolvePosRefetchInterval(),
     refetchOnWindowFocus: true,
   });
 

@@ -484,6 +484,25 @@ html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) .ba
   background-color: #ffffff;
 }
 
+/* <select> natifs : le menu système reste clair — texte sombre même si la modale est en thème sombre. */
+select.native-select-light {
+  color-scheme: light;
+  color: #0f172a;
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+select.native-select-light option {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) select.native-select-light {
+  color: #0f172a !important;
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
 @keyframes eyano-splash-bar {
   0% {
     transform: translateX(-120%);
@@ -529,7 +548,10 @@ html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) .ba
 }
 
 .pos-ticket-print-root,
-.pos-daily-report-print-root {
+.pos-daily-report-print-root,
+.products-catalog-print-root,
+.top-selling-print-root,
+.transfer-ship-print-root {
   display: none;
 }
 
@@ -589,13 +611,19 @@ html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) .ba
      Le rapport n'a pas ces racines, donc il reste visible. */
   body:has(#eyano-barcode-print),
   body:has(#eyano-pos-ticket-print),
-  body:has(#eyano-pos-daily-report-print) {
+  body:has(#eyano-pos-daily-report-print),
+  body:has(#eyano-products-catalog-print),
+  body:has(#eyano-transfer-ship-print),
+  body:has(#eyano-top-selling-print) {
     background: #ffffff !important;
   }
 
   body:has(#eyano-barcode-print) *,
   body:has(#eyano-pos-ticket-print) *,
-  body:has(#eyano-pos-daily-report-print) * {
+  body:has(#eyano-pos-daily-report-print) *,
+  body:has(#eyano-products-catalog-print) *,
+  body:has(#eyano-transfer-ship-print) *,
+  body:has(#eyano-top-selling-print) * {
     visibility: hidden !important;
   }
 
@@ -657,7 +685,13 @@ html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) .ba
   body:has(#eyano-pos-ticket-print) #eyano-pos-ticket-print,
   body:has(#eyano-pos-ticket-print) #eyano-pos-ticket-print *,
   body:has(#eyano-pos-daily-report-print) #eyano-pos-daily-report-print,
-  body:has(#eyano-pos-daily-report-print) #eyano-pos-daily-report-print * {
+  body:has(#eyano-pos-daily-report-print) #eyano-pos-daily-report-print *,
+  body:has(#eyano-products-catalog-print) #eyano-products-catalog-print,
+  body:has(#eyano-products-catalog-print) #eyano-products-catalog-print *,
+  body:has(#eyano-transfer-ship-print) #eyano-transfer-ship-print,
+  body:has(#eyano-transfer-ship-print) #eyano-transfer-ship-print *,
+  body:has(#eyano-top-selling-print) #eyano-top-selling-print,
+  body:has(#eyano-top-selling-print) #eyano-top-selling-print * {
     visibility: visible !important;
   }
 
@@ -695,6 +729,647 @@ html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) .ba
     color: #0f172a !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  @page products-catalog {
+    size: A4 landscape;
+    margin: 9mm 11mm 14mm;
+
+    @bottom-right {
+      content: "Page " counter(page) " / " counter(pages);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 7pt;
+      font-weight: 600;
+      color: #64748b;
+    }
+  }
+
+  #eyano-products-catalog-print,
+  #eyano-top-selling-print {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page: products-catalog;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #eyano-products-catalog-print .catalog-print,
+  #eyano-top-selling-print .catalog-print {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 275mm;
+    margin: 0 auto;
+    padding: 0 0 11mm;
+    color: #0f172a;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 8pt;
+    line-height: 1.3;
+  }
+
+  #eyano-products-catalog-print .catalog-print__mast,
+  #eyano-top-selling-print .catalog-print__mast {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 5mm 8mm;
+    padding-bottom: 2.5mm;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  #eyano-products-catalog-print .catalog-print__logo,
+  #eyano-top-selling-print .catalog-print__logo {
+    display: block;
+    width: 40mm;
+    height: auto;
+    object-fit: contain;
+    object-position: left bottom;
+  }
+
+  #eyano-products-catalog-print .catalog-print__report-title,
+  #eyano-top-selling-print .catalog-print__report-title {
+    margin: 4mm 0 3.5mm;
+    text-align: center;
+  }
+
+  #eyano-products-catalog-print .catalog-print__report-title h1,
+  #eyano-top-selling-print .catalog-print__report-title h1 {
+    margin: 0;
+    font-size: 14pt;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1.15;
+    color: #0f172a;
+    text-transform: uppercase;
+  }
+
+  #eyano-products-catalog-print .catalog-print__scope,
+  #eyano-top-selling-print .catalog-print__scope {
+    margin: 1.2mm 0 0;
+    font-size: 7.5pt;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  #eyano-products-catalog-print .catalog-print__edition,
+  #eyano-top-selling-print .catalog-print__edition {
+    text-align: right;
+  }
+
+  #eyano-products-catalog-print .catalog-print__edition-count,
+  #eyano-top-selling-print .catalog-print__edition-count {
+    margin: 0;
+    font-size: 20pt;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: #0f172a;
+  }
+
+  #eyano-products-catalog-print .catalog-print__edition-label,
+  #eyano-top-selling-print .catalog-print__edition-label,
+  #eyano-products-catalog-print .catalog-print__edition-date,
+  #eyano-top-selling-print .catalog-print__edition-date {
+    margin: 0.6mm 0 0;
+    font-size: 7.5pt;
+    color: #64748b;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table-wrap,
+  #eyano-top-selling-print .catalog-print__table-wrap {
+    width: 100%;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table,
+  #eyano-top-selling-print .catalog-print__table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  #eyano-products-catalog-print .catalog-print__col-ref,
+  #eyano-top-selling-print .catalog-print__col-ref { width: 8%; }
+  #eyano-products-catalog-print .catalog-print__col-name,
+  #eyano-top-selling-print .catalog-print__col-name { width: 29%; }
+  #eyano-products-catalog-print .catalog-print__col-cat,
+  #eyano-top-selling-print .catalog-print__col-cat { width: 18%; }
+  #eyano-products-catalog-print .catalog-print__col-money,
+  #eyano-top-selling-print .catalog-print__col-money { width: 9.5%; }
+  #eyano-products-catalog-print .catalog-print__col-qty,
+  #eyano-top-selling-print .catalog-print__col-qty { width: 6%; }
+  #eyano-products-catalog-print .catalog-print__col-status,
+  #eyano-top-selling-print .catalog-print__col-status { width: 9%; }
+  #eyano-products-catalog-print .catalog-print__col-code,
+  #eyano-top-selling-print .catalog-print__col-code { width: 11%; }
+
+  #eyano-top-selling-print .catalog-print__col-rank { width: 8%; }
+  #eyano-top-selling-print .catalog-print__col-ref { width: 20%; }
+  #eyano-top-selling-print .catalog-print__col-name { width: 42%; }
+  #eyano-top-selling-print .catalog-print__col-qty { width: 14%; }
+  #eyano-top-selling-print .catalog-print__col-ca { width: 16%; }
+
+  #eyano-products-catalog-print .catalog-print__table thead,
+  #eyano-top-selling-print .catalog-print__table thead {
+    display: table-header-group;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table th,
+  #eyano-top-selling-print .catalog-print__table th {
+    padding: 1.6mm 2mm;
+    border-bottom: none;
+    background: #0f172a;
+    color: #f8fafc;
+    font-size: 6.5pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-align: left;
+    text-transform: uppercase;
+    vertical-align: bottom;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table td,
+  #eyano-top-selling-print .catalog-print__table td {
+    padding: 1.35mm 2mm;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  #eyano-products-catalog-print .catalog-print__cell-name,
+  #eyano-top-selling-print .catalog-print__cell-name,
+  #eyano-products-catalog-print .catalog-print__cell-category,
+  #eyano-top-selling-print .catalog-print__cell-category {
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: auto;
+  }
+
+  #eyano-products-catalog-print .catalog-print__cell-status,
+  #eyano-top-selling-print .catalog-print__cell-status {
+    vertical-align: middle;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table tbody tr:nth-child(even) td,
+  #eyano-top-selling-print .catalog-print__table tbody tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table tbody tr:hover td,
+  #eyano-top-selling-print .catalog-print__table tbody tr:hover td {
+    background: #f1f5f9;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table tr,
+  #eyano-top-selling-print .catalog-print__table tr {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  #eyano-products-catalog-print .catalog-print__table tfoot td,
+  #eyano-top-selling-print .catalog-print__table tfoot td {
+    border-bottom: none;
+    border-top: 1.5pt solid #0f172a;
+    background: #f8fafc;
+    font-weight: 700;
+    padding-top: 2.2mm;
+  }
+
+  #eyano-products-catalog-print .catalog-print__ref,
+  #eyano-top-selling-print .catalog-print__ref,
+  #eyano-products-catalog-print .catalog-print__code,
+  #eyano-top-selling-print .catalog-print__code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 7.5pt;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  #eyano-products-catalog-print .catalog-print__name,
+  #eyano-top-selling-print .catalog-print__name {
+    display: block;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  #eyano-products-catalog-print .catalog-print__sub,
+  #eyano-top-selling-print .catalog-print__sub {
+    display: block;
+    margin-top: 0.35mm;
+    font-size: 6.5pt;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #64748b;
+  }
+
+  #eyano-products-catalog-print .catalog-print__sub--inline,
+  #eyano-top-selling-print .catalog-print__sub--inline {
+    display: block;
+    margin-top: 0.25mm;
+    font-weight: 600;
+  }
+
+  #eyano-products-catalog-print .catalog-print__num,
+  #eyano-top-selling-print .catalog-print__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  #eyano-products-catalog-print .catalog-print__num--center,
+  #eyano-top-selling-print .catalog-print__num--center {
+    text-align: center;
+    padding-left: 1mm;
+    padding-right: 1mm;
+  }
+
+  #eyano-products-catalog-print .catalog-print__num--strong,
+  #eyano-top-selling-print .catalog-print__num--strong {
+    font-weight: 700;
+  }
+
+  #eyano-products-catalog-print .catalog-print__pill,
+  #eyano-top-selling-print .catalog-print__pill {
+    display: inline-block;
+    padding: 0.25mm 1.4mm;
+    border-radius: 999px;
+    font-size: 6.5pt;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    background: #e2e8f0;
+    color: #334155;
+    white-space: nowrap;
+  }
+
+  #eyano-products-catalog-print .catalog-print__pill--active,
+  #eyano-top-selling-print .catalog-print__pill--active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  #eyano-products-catalog-print .catalog-print__pill--draft,
+  #eyano-top-selling-print .catalog-print__pill--draft {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  #eyano-products-catalog-print .catalog-print__pill--inactive,
+  #eyano-top-selling-print .catalog-print__pill--inactive {
+    background: #e2e8f0;
+    color: #475569;
+  }
+
+  #eyano-products-catalog-print .catalog-print__pill--archived,
+  #eyano-top-selling-print .catalog-print__pill--archived {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  #eyano-products-catalog-print .catalog-print__running-foot,
+  #eyano-top-selling-print .catalog-print__running-foot {
+    position: fixed;
+    right: 11mm;
+    bottom: 0;
+    left: 11mm;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4mm;
+    box-sizing: border-box;
+    padding: 1.5mm 0 0;
+    border-top: 0.5pt solid #cbd5e1;
+    font-size: 6.5pt;
+    line-height: 1.3;
+    color: #64748b;
+    background: #ffffff;
+  }
+
+  #eyano-products-catalog-print .catalog-print__running-foot-brand,
+  #eyano-top-selling-print .catalog-print__running-foot-brand {
+    display: inline-flex;
+    gap: 1.5mm;
+    align-items: center;
+    flex-shrink: 0;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #334155;
+  }
+
+  #eyano-products-catalog-print .catalog-print__running-foot-logo,
+  #eyano-top-selling-print .catalog-print__running-foot-logo {
+    display: block;
+    width: 16mm;
+    height: auto;
+    object-fit: contain;
+  }
+
+  #eyano-products-catalog-print .catalog-print__running-foot-meta,
+  #eyano-top-selling-print .catalog-print__running-foot-meta {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+  }
+
+  #eyano-products-catalog-print .catalog-print__running-foot-scope,
+  #eyano-top-selling-print .catalog-print__running-foot-scope {
+    flex-shrink: 0;
+    max-width: 42%;
+    text-align: right;
+    overflow-wrap: break-word;
+  }
+
+  @page transfer-ship {
+    size: A4 portrait;
+    margin: 12mm 14mm 16mm;
+
+    @bottom-right {
+      content: "Page " counter(page) " / " counter(pages);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 7pt;
+      font-weight: 600;
+      color: #64748b;
+    }
+  }
+
+  #eyano-transfer-ship-print {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page: transfer-ship;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 182mm;
+    margin: 0 auto;
+    color: #0f172a;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 9pt;
+    line-height: 1.35;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__mast {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8mm;
+    padding-bottom: 3mm;
+    border-bottom: 2px solid #0f172a;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__logo {
+    display: block;
+    width: 34mm;
+    height: auto;
+    object-fit: contain;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__doc-meta {
+    text-align: right;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__doc-ref {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10pt;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__doc-date {
+    margin: 0.8mm 0 0;
+    font-size: 8pt;
+    color: #64748b;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__title {
+    margin: 5mm 0 4mm;
+    text-align: center;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__title h1 {
+    margin: 0;
+    font-size: 15pt;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #0f172a;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__title p {
+    margin: 1mm 0 0;
+    font-size: 8pt;
+    color: #64748b;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__route {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 4mm;
+    align-items: center;
+    margin-bottom: 4mm;
+    padding: 3mm 4mm;
+    border: 1px solid #e2e8f0;
+    border-radius: 2mm;
+    background: #f8fafc;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__route-col {
+    min-width: 0;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__route-label {
+    margin: 0;
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__route-value {
+    margin: 0.6mm 0 0;
+    font-size: 10pt;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__route-sub {
+    margin: 0.4mm 0 0;
+    font-family: ui-monospace, monospace;
+    font-size: 7.5pt;
+    color: #475569;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__route-arrow {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__note {
+    margin: 0 0 4mm;
+    padding: 2.5mm 3mm;
+    border-left: 3px solid #0f172a;
+    background: #fffbeb;
+    font-size: 8pt;
+    color: #334155;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__note-label {
+    font-weight: 700;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-bottom: 8mm;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__table thead {
+    display: table-header-group;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__table th {
+    padding: 1.8mm 2.5mm;
+    background: #0f172a;
+    color: #f8fafc;
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__table td {
+    padding: 1.5mm 2.5mm;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__table tbody tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__table tfoot td {
+    border-top: 2px solid #0f172a;
+    border-bottom: none;
+    font-weight: 700;
+    background: #f1f5f9;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__ref {
+    width: 22%;
+    font-family: ui-monospace, monospace;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__cell-name {
+    width: auto;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__num {
+    width: 18%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__num--strong {
+    font-weight: 800;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__total-label {
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 7.5pt;
+    color: #475569;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__signatures {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5mm;
+    margin-top: 6mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__signature {
+    padding: 3mm 2mm 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 2mm;
+    min-height: 28mm;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__signature-role {
+    margin: 0;
+    font-size: 7.5pt;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #0f172a;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__signature-name {
+    margin: 1.5mm 0 0;
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__signature-line {
+    margin-top: 10mm;
+    border-bottom: 1px solid #0f172a;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__signature-hint {
+    margin: 1mm 0 2mm;
+    font-size: 6.5pt;
+    color: #94a3b8;
+    text-align: center;
+  }
+
+  #eyano-transfer-ship-print .transfer-ship-print__foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 4mm;
+    margin-top: 6mm;
+    padding-top: 2mm;
+    border-top: 1px solid #cbd5e1;
+    font-size: 7pt;
+    color: #94a3b8;
   }
 
   #eyano-pos-ticket-print .pos-print-sheet{
@@ -1235,21 +1910,21 @@ html:is([data-theme="marine"], [data-theme="ardoise"], [data-theme="sable"]) .ba
     display: none !important;
   }
 
-  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)) {
+  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)):not(:has(#eyano-products-catalog-print)):not(:has(#eyano-top-selling-print)):not(:has(#eyano-transfer-ship-print)) {
     background: #ffffff !important;
     color: #0f172a !important;
   }
 
-  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)) .admin-shell {
+  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)):not(:has(#eyano-products-catalog-print)):not(:has(#eyano-top-selling-print)):not(:has(#eyano-transfer-ship-print)) .admin-shell {
     display: block !important;
     min-height: 0 !important;
     background: #ffffff !important;
     color: #0f172a !important;
   }
 
-  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)) .admin-shell > aside,
-  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)) .admin-shell header,
-  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)) .admin-shell nav {
+  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)):not(:has(#eyano-products-catalog-print)):not(:has(#eyano-top-selling-print)):not(:has(#eyano-transfer-ship-print)) .admin-shell > aside,
+  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)):not(:has(#eyano-products-catalog-print)):not(:has(#eyano-top-selling-print)):not(:has(#eyano-transfer-ship-print)) .admin-shell header,
+  body:not(:has(#eyano-barcode-print)):not(:has(#eyano-pos-ticket-print)):not(:has(#eyano-pos-daily-report-print)):not(:has(#eyano-products-catalog-print)):not(:has(#eyano-top-selling-print)):not(:has(#eyano-transfer-ship-print)) .admin-shell nav {
     display: none !important;
   }
 

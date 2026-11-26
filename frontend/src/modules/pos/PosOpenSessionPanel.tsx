@@ -44,7 +44,7 @@ export function PosOpenSessionPanel({ register, canOpen, busy, onOpen }: PosOpen
               type="number"
               min={0}
               step={0.01}
-              defaultValue={50}
+              defaultValue={0}
               className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-mono text-sm shadow-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
             />
           </label>
@@ -55,7 +55,7 @@ export function PosOpenSessionPanel({ register, canOpen, busy, onOpen }: PosOpen
               type="number"
               min={0}
               step={100}
-              defaultValue={100_000}
+              defaultValue={0}
               className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-mono text-sm shadow-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
             />
           </label>

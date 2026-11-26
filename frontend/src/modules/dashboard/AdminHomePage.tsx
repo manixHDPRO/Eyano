@@ -58,13 +58,11 @@ export function AdminHomePage() {
   const dashboardQuery = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: fetchAdminDashboard,
-    refetchInterval: 60_000,
   });
 
   const healthQuery = useQuery({
     queryKey: ["health"],
     queryFn: fetchHealth,
-    refetchInterval: 30_000,
   });
 
   const apiTone =

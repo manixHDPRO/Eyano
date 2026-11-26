@@ -106,6 +106,44 @@ export function fetchReportsOverview(params: ReportsOverviewParams = {}): Promis
   return apiRequest(`/reports/overview${query ? `?${query}` : ""}`);
 }
 
+export type ReportsTopProductsParams = {
+  storeId: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+};
+
+export type ReportsTopProductsResult = {
+  generatedAt: string;
+  period: { from: string | null; to: string | null };
+  store: { id: string; code: string; name: string };
+  items: Array<{
+    productId: string;
+    reference: string;
+    name: string;
+    qtySold: number;
+    revenueUsd: number;
+    marginUsd: number;
+  }>;
+  totalQtySold: number;
+  totalRevenueUsd: number;
+};
+
+export function fetchReportsTopProducts(params: ReportsTopProductsParams): Promise<ReportsTopProductsResult> {
+  const search = new URLSearchParams();
+  search.set("storeId", params.storeId);
+  if (params.from) {
+    search.set("from", params.from);
+  }
+  if (params.to) {
+    search.set("to", params.to);
+  }
+  if (params.limit !== undefined) {
+    search.set("limit", String(params.limit));
+  }
+  return apiRequest(`/reports/top-products?${search.toString()}`);
+}
+
 export async function downloadReportsSalesExcel(params: ReportsOverviewParams = {}): Promise<void> {
   const query = buildReportsQuery(params);
   const { blob, filename } = await apiDownload(`/reports/export/sales.xlsx${query ? `?${query}` : ""}`);

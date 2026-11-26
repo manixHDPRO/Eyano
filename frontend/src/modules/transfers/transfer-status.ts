@@ -1,15 +1,5 @@
 import type { TransferStatus } from "../../lib/api/types";
 
-export const TRANSFER_PIPELINE: TransferStatus[] = [
-  "DRAFT",
-  "PENDING",
-  "VALIDATED",
-  "PREPARING",
-  "SHIPPED",
-  "PARTIALLY_RECEIVED",
-  "RECEIVED",
-];
-
 export function transferStatusLabel(status: TransferStatus): string {
   switch (status) {
     case "DRAFT":

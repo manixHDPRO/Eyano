@@ -10,6 +10,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { formatCdf, formatUsd } from "../catalog/money";
 import { Pagination } from "../../components/ui/Pagination";
 import { useClientPagination } from "../../lib/pagination/client-pagination";
+import { resolvePosRefetchInterval } from "../../lib/query/live-sync";
 import { expenseCategoryLabel } from "../finance/expense-labels";
 
 export function PosConfirmExpensesPage() {
@@ -38,7 +39,7 @@ export function PosConfirmExpensesPage() {
         cashRegisterId: defaultRegister?.id,
       }),
     enabled: Boolean(storeId),
-    refetchInterval: 15_000,
+    refetchInterval: () => resolvePosRefetchInterval(),
   });
 
   const confirmMutation = useMutation({

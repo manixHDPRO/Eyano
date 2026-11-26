@@ -45,7 +45,6 @@ export function LoginHistoryJournalPage() {
   const summaryQuery = useQuery({
     queryKey: ["login-histories-summary"],
     queryFn: fetchLoginHistoriesSummary,
-    refetchInterval: 60_000,
   });
 
   const listQuery = useQuery({

@@ -30,6 +30,15 @@ export type ReportsTopProduct = {
   marginUsd: number;
 };
 
+export type ReportsTopProductsResponse = {
+  generatedAt: string;
+  period: { from: string | null; to: string | null };
+  store: { id: string; code: string; name: string };
+  items: ReportsTopProduct[];
+  totalQtySold: number;
+  totalRevenueUsd: number;
+};
+
 export type ReportsStockRow = {
   productId: string;
   reference: string;

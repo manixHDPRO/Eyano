@@ -4,6 +4,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { RequirePermission } from "../../common/decorators/require-permission.decorator";
 import type { AuthUser } from "../../common/types/auth-user";
 import { ReportsOverviewQueryDto } from "./dto/reports-overview.query.dto";
+import { ReportsTopProductsQueryDto } from "./dto/reports-top-products.query.dto";
 import { ReportsService } from "./reports.service";
 
 @Controller("reports")
@@ -15,5 +16,12 @@ export class ReportsController {
   @StoreScoped("query", "storeId")
   overview(@CurrentUser() actor: AuthUser, @Query() query: ReportsOverviewQueryDto) {
     return this.reports.overview(actor, query);
+  }
+
+  @Get("top-products")
+  @RequirePermission("reports.read")
+  @StoreScoped("query", "storeId")
+  topProductsByQuantity(@CurrentUser() actor: AuthUser, @Query() query: ReportsTopProductsQueryDto) {
+    return this.reports.topProductsByQuantity(actor, query);
   }
 }

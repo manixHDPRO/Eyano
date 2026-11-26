@@ -7,3 +7,5 @@ dist/
 Thumbs.db
 backend/generated/
 import-hd-eyano-app/
+.agents/
+skills-lock.json

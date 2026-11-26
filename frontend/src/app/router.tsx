@@ -49,6 +49,7 @@ import { NotificationsCenterPage } from "../modules/notifications/NotificationsC
 import { AuditJournalPage } from "../modules/audit/AuditJournalPage";
 import { LoginHistoryJournalPage } from "../modules/login-history/LoginHistoryJournalPage";
 import { ReportsPage } from "../modules/reports/ReportsPage";
+import { TopSellingProductsPage } from "../modules/reports/TopSellingProductsPage";
 import { NOTIFICATION_READ_PERMISSIONS } from "../lib/auth/notification-access";
 
 export function AppRouter() {
@@ -366,6 +367,14 @@ export function AppRouter() {
                 element={
                   <RequirePermission permission="reports.read">
                     <ReportsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/admin/reports/top-selling"
+                element={
+                  <RequirePermission permission="reports.read">
+                    <TopSellingProductsPage />
                   </RequirePermission>
                 }
               />

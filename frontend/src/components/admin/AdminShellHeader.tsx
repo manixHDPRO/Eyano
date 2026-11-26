@@ -4,8 +4,10 @@ import { Link, useLocation } from "react-router-dom";
 import { fetchCurrentExchangeRates } from "../../lib/api/exchange-rates";
 import { findNavItemByPath } from "../../lib/navigation/admin-nav";
 import { DEFAULT_ENCAISSEMENT_CDF_PER_USD, formatCdfPerUsd } from "../../lib/money/exchange-rate-defaults";
+import { LIVE_SYNC_STALE_TIME_MS } from "../../lib/query/live-sync";
 import { hasPermission } from "../../lib/auth/permissions";
 import { useAuth } from "../../modules/auth/AuthProvider";
+import { AdminLiveSyncIndicator } from "./AdminLiveSyncIndicator";
 import { AdminStockAlertsBell } from "./AdminStockAlertsBell";
 import { EyanoLogo } from "../EyanoLogo";
 import { SessionActions } from "../SessionActions";
@@ -24,7 +26,7 @@ export function AdminShellHeader({ onOpenMenu }: AdminShellHeaderProps) {
   const ratesQuery = useQuery({
     queryKey: ["exchange-rates", "current"],
     queryFn: fetchCurrentExchangeRates,
-    staleTime: 60_000,
+    staleTime: LIVE_SYNC_STALE_TIME_MS,
   });
 
   const encRate = ratesQuery.data?.encaissement?.rate ?? DEFAULT_ENCAISSEMENT_CDF_PER_USD;
@@ -65,6 +67,7 @@ export function AdminShellHeader({ onOpenMenu }: AdminShellHeaderProps) {
               Caisse POS
             </Link>
           ) : null}
+          <AdminLiveSyncIndicator />
           <AdminStockAlertsBell />
           <SessionActions variant="cluster" onLight />
         </div>

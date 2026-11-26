@@ -9,6 +9,7 @@ import { canReadAppNotifications } from "../../lib/auth/notification-access";
 import { useAuth } from "../auth/AuthProvider";
 import { Pagination } from "../../components/ui/Pagination";
 import { useClientPagination } from "../../lib/pagination/client-pagination";
+import { resolvePosRefetchInterval } from "../../lib/query/live-sync";
 import { internalIssueReasonLabel } from "../internal-issues/internal-issue-status";
 
 export function PosInternalIssuesConfirmPage() {
@@ -29,7 +30,7 @@ export function PosInternalIssuesConfirmPage() {
     queryKey: ["internal-issues-pending-store", storeId],
     queryFn: () => fetchPendingStoreInternalIssues(storeId!),
     enabled: Boolean(storeId),
-    refetchInterval: 15_000,
+    refetchInterval: () => resolvePosRefetchInterval(),
   });
 
   const confirmMutation = useMutation({

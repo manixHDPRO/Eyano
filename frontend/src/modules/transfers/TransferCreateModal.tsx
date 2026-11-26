@@ -3,9 +3,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { createTransfer, fetchTransferCatalog, fetchTransferDestinations } from "../../lib/api/transfers";
 import { fetchWarehouses } from "../../lib/api/warehouses";
 import { formatApiErrorMessage } from "../../lib/api/errors";
-
-const fieldClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300";
+const selectClass =
+  "native-select-light w-full rounded-lg border px-3 py-2 text-xs shadow-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300";
+const lineSelectClass = "native-select-light min-w-0 flex-1 rounded-lg border px-2.5 py-2 text-xs";
+const lineQtyClass =
+  "w-20 rounded-lg border border-slate-300 bg-white px-2 py-2 font-mono text-xs tabular-nums text-slate-900";
 
 type TransferCreateModalProps = {
   onClose: () => void;
@@ -156,7 +158,7 @@ export function TransferCreateModal({ onClose, onCreated, busy, setBusy, onError
                 setStoreId(event.target.value);
                 setLines([]);
               }}
-              className={fieldClass}
+              className={selectClass}
               required
             >
               {stores.map((store) => (
@@ -193,7 +195,7 @@ export function TransferCreateModal({ onClose, onCreated, busy, setBusy, onError
                       current.map((row, i) => (i === index ? { ...row, productId: event.target.value } : row)),
                     )
                   }
-                  className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
+                  className={lineSelectClass}
                   disabled={!catalog.length}
                 >
                   {catalog.map((product) => (
@@ -211,7 +213,7 @@ export function TransferCreateModal({ onClose, onCreated, busy, setBusy, onError
                       current.map((row, i) => (i === index ? { ...row, quantity: Number(event.target.value) } : row)),
                     )
                   }
-                  className="w-20 rounded-lg border border-slate-300 px-2 py-2 font-mono tabular-nums text-xs"
+                  className={lineQtyClass}
                   aria-label="Quantité"
                 />
               </div>
@@ -240,7 +242,7 @@ export function TransferCreateModal({ onClose, onCreated, busy, setBusy, onError
               type="text"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className={fieldClass}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
             />
           </div>
 

@@ -8,6 +8,7 @@ import type { StockLevelItem } from "../../lib/api/types";
 import { canReadAppNotifications } from "../../lib/auth/notification-access";
 import { hasPermission } from "../../lib/auth/permissions";
 import { useAuth } from "../../modules/auth/AuthProvider";
+import { LIVE_SYNC_INTERVAL_MS } from "../../lib/query/live-sync";
 import { locationLabel, stockAlertLabel, stockAlertTone } from "../../modules/stock/stock-display";
 
 export function AdminStockAlertsBell() {
@@ -25,28 +26,28 @@ export function AdminStockAlertsBell() {
     queryKey: ["stock-summary"],
     queryFn: fetchStockSummary,
     enabled: canStock && enabled,
-    refetchInterval: 60_000,
+    refetchInterval: LIVE_SYNC_INTERVAL_MS,
   });
 
   const stockoutQuery = useQuery({
     queryKey: ["stock-levels", "bell", "STOCKOUT"],
     queryFn: () => fetchStockLevels({ alertStatus: "STOCKOUT", page: 1, pageSize: 12 }),
     enabled: canStock && enabled,
-    refetchInterval: 60_000,
+    refetchInterval: LIVE_SYNC_INTERVAL_MS,
   });
 
   const lowQuery = useQuery({
     queryKey: ["stock-levels", "bell", "LOW"],
     queryFn: () => fetchStockLevels({ alertStatus: "LOW", page: 1, pageSize: 12 }),
     enabled: canStock && enabled,
-    refetchInterval: 60_000,
+    refetchInterval: LIVE_SYNC_INTERVAL_MS,
   });
 
   const notifQuery = useQuery({
     queryKey: ["notifications", "stock-bell"],
     queryFn: () => fetchNotifications({ unreadOnly: true, pageSize: 30 }),
     enabled: canNotifs && enabled,
-    refetchInterval: 30_000,
+    refetchInterval: LIVE_SYNC_INTERVAL_MS,
   });
 
   const unreadNotifs = notifQuery.data?.items ?? [];
