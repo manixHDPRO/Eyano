@@ -1,0 +1,9 @@
+import { PROTECTED_SUPER_ADMIN_PERMISSION } from "../../common/access/access.constants";
+
+export const ROLES_ERROR = {
+  NOT_FOUND: "ROLE_NOT_FOUND",
+  SYSTEM_ROLE: "SYSTEM_ROLE_PROTECTED",
+  SUPER_ADMIN_GUARD: "SUPER_ADMIN_PERMISSION_GUARD",
+} as const;
+
+export { PROTECTED_SUPER_ADMIN_PERMISSION };

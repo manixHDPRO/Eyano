@@ -1,0 +1,3 @@
+export const LOGIN_HISTORY_ERROR = {
+  USER_NOT_FOUND: "LOGIN_HISTORY_USER_NOT_FOUND",
+} as const;

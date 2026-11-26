@@ -1,0 +1,1087 @@
+// Eyano — schéma Prisma (palier 2)
+// Source : docs/ARCHITECTURE.md §3–§4. Aucune logique métier applicative ici.
+// UUID v7 : défaut SQL eyano_uuid_v7() (migration). Contraintes CHECK et
+// index uniques partiels : SQL de la migration initiale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+
+  @@map("user_status")
+}
+
+enum ReferentialStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("referential_status")
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+
+  @@map("product_status")
+}
+
+enum CategoryStatus {
+  ACTIVE
+  ARCHIVED
+
+  @@map("category_status")
+}
+
+enum BarcodeSymbology {
+  CODE128
+
+  @@map("barcode_symbology")
+}
+
+enum PrintContext {
+  SINGLE
+  BATCH
+
+  @@map("print_context")
+}
+
+enum CurrencyCode {
+  USD
+  CDF
+
+  @@map("currency_code")
+}
+
+enum MovementType {
+  GOODS_RECEIPT
+  TRANSFER_OUT
+  TRANSFER_IN
+  SALE
+  SALE_REVERSAL
+  INTERNAL_ISSUE
+  INVENTORY_ADJUSTMENT
+  MANUAL_ADJUSTMENT
+
+  @@map("movement_type")
+}
+
+enum MovementDirection {
+  IN
+  OUT
+
+  @@map("movement_direction")
+}
+
+enum GoodsReceiptStatus {
+  DRAFT
+  VALIDATED
+  CANCELLED
+
+  @@map("goods_receipt_status")
+}
+
+enum TransferStatus {
+  DRAFT
+  PENDING
+  VALIDATED
+  PREPARING
+  SHIPPED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+
+  @@map("transfer_status")
+}
+
+enum ScopeType {
+  WAREHOUSE
+  STORE
+
+  @@map("scope_type")
+}
+
+enum InventoryStatus {
+  DRAFT
+  IN_PROGRESS
+  PENDING_VALIDATION
+  VALIDATED
+  CANCELLED
+
+  @@map("inventory_status")
+}
+
+enum InternalIssueReason {
+  CLEANING
+  MAINTENANCE
+  INTERNAL_USE
+  DAMAGED
+  OTHER
+
+  @@map("internal_issue_reason")
+}
+
+enum InternalIssueStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+
+  @@map("internal_issue_status")
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+
+  @@map("cash_session_status")
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+
+  @@map("sale_status")
+}
+
+enum PaymentMethod {
+  CASH
+  MPESA
+  ORANGE_MONEY
+  AIRTEL_MONEY
+
+  @@map("payment_method")
+}
+
+enum ExchangeRateType {
+  ENCAISSEMENT
+  DECAISSEMENT
+
+  @@map("exchange_rate_type")
+}
+
+enum DocumentSequenceCode {
+  SALE
+  TRANSFER
+  RECEIPT
+  EXPENSE
+  INVENTORY
+  INTERNAL_ISSUE
+
+  @@map("document_sequence_code")
+}
+
+enum NotificationType {
+  LOW_STOCK
+  STOCKOUT
+  TRANSFER_PENDING
+  TRANSFER_SHIPPED
+  TRANSFER_RECEIVED
+  INVENTORY_VARIANCE
+  CASH_VARIANCE
+  INTERNAL_ISSUE_PENDING
+  EXPENSE_DRAWER_PENDING
+  PRICE_CHANGED
+  DISCOUNT_CHANGED
+  RATE_CHANGED
+
+  @@map("notification_type")
+}
+
+enum ExpenseStatus {
+  CONFIRMED
+  PENDING_CASHIER_CONFIRMATION
+  CANCELLED
+
+  @@map("expense_status")
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+
+  @@map("notification_severity")
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+
+  @@map("setting_value_type")
+}
+
+// ---------------------------------------------------------------------------
+// 3.1 Identité et accès
+// ---------------------------------------------------------------------------
+
+model Role {
+  id          String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  users            User[]
+  rolePermissions  RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  code        String   @unique
+  module      String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id                 String     @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  email              String     @unique
+  passwordHash       String     @map("password_hash")
+  firstName          String     @map("first_name")
+  lastName           String     @map("last_name")
+  phone              String?
+  status             UserStatus @default(ACTIVE)
+  roleId             String     @map("role_id") @db.Uuid
+  failedLoginCount   Int        @default(0) @map("failed_login_count")
+  lockedUntil        DateTime?  @map("locked_until") @db.Timestamptz
+  passwordChangedAt  DateTime?  @map("password_changed_at") @db.Timestamptz
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  role Role @relation(fields: [roleId], references: [id])
+
+  storeMemberships              StoreUser[]           @relation("StoreUserMember")
+  storeAssignmentsMade          StoreUser[]           @relation("StoreUserAssignedBy")
+  refreshTokens                 RefreshToken[]
+  loginHistories                LoginHistory[]
+  productsCreated               Product[]             @relation("ProductCreatedBy")
+  barcodesPrinted               BarcodePrintLog[]
+  productStoresAuthorized       ProductStore[]        @relation("ProductStoreAuthorizedBy")
+  productPricesCreated          ProductPrice[]
+  productDiscountsCreated       ProductDiscount[]
+  stockMovementsCreated         StockMovement[]
+  goodsReceiptsCreated          GoodsReceipt[]        @relation("GoodsReceiptCreatedBy")
+  goodsReceiptsValidated        GoodsReceipt[]        @relation("GoodsReceiptValidatedBy")
+  transfersCreated              Transfer[]            @relation("TransferCreatedBy")
+  transfersValidated            Transfer[]            @relation("TransferValidatedBy")
+  transfersShipped              Transfer[]            @relation("TransferShippedBy")
+  transfersReceived             Transfer[]            @relation("TransferReceivedBy")
+  inventorySessionsStarted      InventorySession[]    @relation("InventoryStartedBy")
+  inventorySessionsValidated    InventorySession[]    @relation("InventoryValidatedBy")
+  internalIssuesRequested       InternalStockIssue[]  @relation("InternalIssueRequestedBy")
+  internalIssuesReviewed        InternalStockIssue[]  @relation("InternalIssueReviewedBy")
+  internalIssuesStoreConfirmed  InternalStockIssue[]  @relation("InternalIssueStoreConfirmedBy")
+  cashSessionsOpened            CashSession[]         @relation("CashSessionOpenedBy")
+  cashSessionsClosed            CashSession[]         @relation("CashSessionClosedBy")
+  salesAsCashier                Sale[]                @relation("SaleCashier")
+  salesVoided                   Sale[]                @relation("SaleVoidedBy")
+  saleIdempotencyKeysCreated    SaleIdempotencyKey[]  @relation("SaleIdempotencyCreatedBy")
+  expensesCreated               Expense[]
+  expensesCashierConfirmed      Expense[]             @relation("ExpenseCashierConfirmedBy")
+  exchangeRatesCreated          ExchangeRate[]
+  appSettingsUpdated            AppSetting[]
+  notificationsRead             Notification[]        @relation("NotificationReadBy")
+  auditLogs                     AuditLog[]
+
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+}
+
+model StoreUser {
+  id         String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  storeId    String   @map("store_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  assignedBy String?  @map("assigned_by") @db.Uuid
+
+  store          Store @relation(fields: [storeId], references: [id])
+  user           User  @relation("StoreUserMember", fields: [userId], references: [id])
+  assignedByUser User? @relation("StoreUserAssignedBy", fields: [assignedBy], references: [id])
+
+  @@unique([storeId, userId])
+  @@index([userId])
+  @@map("store_users")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  familyId   String    @map("family_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  ip         String?
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacement     RefreshToken? @relation("RefreshTokenRotation", fields: [replacedBy], references: [id])
+  replacedTokens  RefreshToken[] @relation("RefreshTokenRotation")
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model LoginHistory {
+  id        String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  success   Boolean
+  ip        String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("login_histories")
+}
+
+// ---------------------------------------------------------------------------
+// 3.2 Réseau
+// ---------------------------------------------------------------------------
+
+model Store {
+  id            String             @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  code          String             @unique
+  name          String
+  address       String?
+  city          String?
+  phone         String?
+  status        ReferentialStatus  @default(ACTIVE)
+  receiptHeader String?            @map("receipt_header")
+  receiptFooter String?            @map("receipt_footer")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  storeUsers           StoreUser[]
+  cashRegisters        CashRegister[]
+  productStores        ProductStore[]
+  stockLevels          StockLevel[]
+  stockMovements       StockMovement[]
+  transfers            Transfer[]
+  inventorySessions    InventorySession[]
+  internalStockIssues  InternalStockIssue[]
+  sales                Sale[]
+  expenses             Expense[]
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+
+  @@map("stores")
+}
+
+model Warehouse {
+  id        String            @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  code      String            @unique
+  name      String
+  address   String?
+  status    ReferentialStatus @default(ACTIVE)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  stockLevels          StockLevel[]
+  stockMovements       StockMovement[]
+  goodsReceipts        GoodsReceipt[]
+  transfers            Transfer[]
+  inventorySessions    InventorySession[]
+  internalStockIssues  InternalStockIssue[]
+  expenses             Expense[]
+
+  @@map("warehouses")
+}
+
+model CashRegister {
+  id        String            @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  storeId   String            @map("store_id") @db.Uuid
+  code      String
+  name      String
+  isDefault Boolean           @default(false) @map("is_default")
+  status    ReferentialStatus @default(ACTIVE)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  store        Store         @relation(fields: [storeId], references: [id])
+  cashSessions CashSession[]
+  expenses     Expense[]
+
+  @@unique([storeId, code])
+  @@index([storeId])
+  @@map("cash_registers")
+}
+
+// Index unique partiel (SQL, palier 7) : une seule caisse is_default = true par boutique.
+
+// ---------------------------------------------------------------------------
+// 3.3 Catalogue
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String         @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  parentId  String?        @map("parent_id") @db.Uuid
+  name      String
+  slug      String         @unique
+  status    CategoryStatus @default(ACTIVE)
+  sortOrder Int            @default(0) @map("sort_order")
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Product {
+  id              String        @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  reference       String        @unique
+  name            String
+  categoryId      String        @map("category_id") @db.Uuid
+  brand           String?
+  originCountry   String?       @map("origin_country")
+  description     String?
+  photoPath       String?       @map("photo_path")
+  purchasePrice   Decimal       @map("purchase_price") @db.Decimal(18, 2)
+  officialPrice   Decimal       @map("official_price") @db.Decimal(18, 2)
+  discountPercent Decimal       @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  finalPrice      Decimal       @map("final_price") @db.Decimal(18, 2)
+  alertThreshold  Int?          @map("alert_threshold")
+  status          ProductStatus @default(DRAFT)
+  createdById     String        @map("created_by") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  category              Category             @relation(fields: [categoryId], references: [id])
+  createdBy             User                 @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  barcode               Barcode?
+  productStores         ProductStore[]
+  productPrices         ProductPrice[]
+  productDiscounts      ProductDiscount[]
+  stockLevels           StockLevel[]
+  stockMovements        StockMovement[]
+  goodsReceiptItems     GoodsReceiptItem[]
+  transferItems         TransferItem[]
+  inventoryItems        InventoryItem[]
+  internalStockIssues   InternalStockIssue[]
+  saleItems             SaleItem[]
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([status])
+  @@map("products")
+}
+
+model Barcode {
+  id        String           @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  productId String           @unique @map("product_id") @db.Uuid
+  code      String           @unique
+  symbology BarcodeSymbology @default(CODE128)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  product   Product           @relation(fields: [productId], references: [id])
+  printLogs BarcodePrintLog[]
+
+  @@map("barcodes")
+}
+
+model BarcodePrintLog {
+  id        String       @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  barcodeId String       @map("barcode_id") @db.Uuid
+  printedBy String       @map("printed_by") @db.Uuid
+  copies    Int
+  context   PrintContext
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  barcode Barcode @relation(fields: [barcodeId], references: [id], onDelete: Cascade)
+  printer User    @relation(fields: [printedBy], references: [id])
+
+  @@index([barcodeId, createdAt])
+  @@map("barcode_print_logs")
+}
+
+model ProductStore {
+  id           String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  productId    String   @map("product_id") @db.Uuid
+  storeId      String   @map("store_id") @db.Uuid
+  isAuthorized Boolean  @default(true) @map("is_authorized")
+  authorizedBy String?  @map("authorized_by") @db.Uuid
+  authorizedAt DateTime @default(now()) @map("authorized_at") @db.Timestamptz
+
+  product          Product @relation(fields: [productId], references: [id])
+  store            Store   @relation(fields: [storeId], references: [id])
+  authorizedByUser User?   @relation("ProductStoreAuthorizedBy", fields: [authorizedBy], references: [id])
+
+  @@unique([productId, storeId])
+  @@index([storeId])
+  @@map("product_stores")
+}
+
+model ProductPrice {
+  id            String       @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  productId     String       @map("product_id") @db.Uuid
+  purchasePrice Decimal      @map("purchase_price") @db.Decimal(18, 2)
+  officialPrice Decimal      @map("official_price") @db.Decimal(18, 2)
+  currency      CurrencyCode @default(USD)
+  validFrom     DateTime     @map("valid_from") @db.Timestamptz
+  validTo       DateTime?    @map("valid_to") @db.Timestamptz
+  createdById   String       @map("created_by") @db.Uuid
+  reason        String?
+
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([productId, validFrom])
+  @@map("product_prices")
+}
+
+model ProductDiscount {
+  id          String    @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  productId   String    @map("product_id") @db.Uuid
+  percent     Decimal   @db.Decimal(5, 2)
+  validFrom   DateTime  @map("valid_from") @db.Timestamptz
+  validTo     DateTime? @map("valid_to") @db.Timestamptz
+  createdById String    @map("created_by") @db.Uuid
+  reason      String?
+
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([productId, validFrom])
+  @@map("product_discounts")
+}
+
+// ---------------------------------------------------------------------------
+// 3.4 Stock
+// ---------------------------------------------------------------------------
+
+model StockLevel {
+  id               String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  productId        String   @map("product_id") @db.Uuid
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  storeId          String?  @map("store_id") @db.Uuid
+  quantityOnHand   Int      @default(0) @map("quantity_on_hand")
+  quantityReserved Int      @default(0) @map("quantity_reserved")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  product   Product    @relation(fields: [productId], references: [id])
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
+  store     Store?     @relation(fields: [storeId], references: [id])
+
+  @@index([storeId, productId])
+  @@index([warehouseId, productId])
+  @@map("stock_levels")
+}
+
+model StockMovement {
+  id           String             @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  productId    String             @map("product_id") @db.Uuid
+  movementType MovementType       @map("movement_type")
+  quantity     Int
+  direction    MovementDirection
+  warehouseId  String?            @map("warehouse_id") @db.Uuid
+  storeId      String?            @map("store_id") @db.Uuid
+  unitCost     Decimal?           @map("unit_cost") @db.Decimal(18, 2)
+  sourceType   String             @map("source_type")
+  sourceId     String             @map("source_id") @db.Uuid
+  occurredAt   DateTime           @default(now()) @map("occurred_at") @db.Timestamptz
+  createdById  String             @map("created_by") @db.Uuid
+  note         String?
+
+  product   Product    @relation(fields: [productId], references: [id])
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
+  store     Store?     @relation(fields: [storeId], references: [id])
+  createdBy User       @relation(fields: [createdById], references: [id])
+
+  @@index([productId, occurredAt])
+  @@index([storeId, occurredAt])
+  @@index([warehouseId, occurredAt])
+  @@index([sourceType, sourceId])
+  @@map("stock_movements")
+}
+
+model Supplier {
+  id        String            @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  country   String?
+  status    ReferentialStatus @default(ACTIVE)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  goodsReceipts GoodsReceipt[]
+
+  @@map("suppliers")
+}
+
+model GoodsReceipt {
+  id            String             @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  reference     String             @unique
+  warehouseId   String             @map("warehouse_id") @db.Uuid
+  supplierId    String             @map("supplier_id") @db.Uuid
+  receivedAt    DateTime?          @map("received_at") @db.Timestamptz
+  status        GoodsReceiptStatus @default(DRAFT)
+  note          String?
+  createdById   String             @map("created_by") @db.Uuid
+  validatedById String?            @map("validated_by") @db.Uuid
+  validatedAt   DateTime?          @map("validated_at") @db.Timestamptz
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  warehouse   Warehouse          @relation(fields: [warehouseId], references: [id])
+  supplier    Supplier           @relation(fields: [supplierId], references: [id])
+  createdBy   User               @relation("GoodsReceiptCreatedBy", fields: [createdById], references: [id])
+  validatedBy User?              @relation("GoodsReceiptValidatedBy", fields: [validatedById], references: [id])
+  items       GoodsReceiptItem[]
+
+  @@index([warehouseId, status])
+  @@index([supplierId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id             String  @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  goodsReceiptId String  @map("goods_receipt_id") @db.Uuid
+  productId      String  @map("product_id") @db.Uuid
+  quantity       Int
+  unitCost       Decimal @map("unit_cost") @db.Decimal(18, 2)
+  note           String?
+
+  goodsReceipt GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@unique([goodsReceiptId, productId])
+  @@index([productId])
+  @@map("goods_receipt_items")
+}
+
+// ---------------------------------------------------------------------------
+// 3.5 Transferts
+// ---------------------------------------------------------------------------
+
+model Transfer {
+  id            String         @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  reference     String         @unique
+  warehouseId   String         @map("warehouse_id") @db.Uuid
+  storeId       String         @map("store_id") @db.Uuid
+  status        TransferStatus @default(DRAFT)
+  note          String?
+  createdById   String         @map("created_by") @db.Uuid
+  validatedById String?        @map("validated_by") @db.Uuid
+  shippedById   String?        @map("shipped_by") @db.Uuid
+  receivedById  String?        @map("received_by") @db.Uuid
+  validatedAt   DateTime?      @map("validated_at") @db.Timestamptz
+  shippedAt     DateTime?      @map("shipped_at") @db.Timestamptz
+  receivedAt    DateTime?      @map("received_at") @db.Timestamptz
+  cancelledAt   DateTime?      @map("cancelled_at") @db.Timestamptz
+  cancelReason  String?        @map("cancel_reason")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id])
+  store       Store          @relation(fields: [storeId], references: [id])
+  createdBy   User           @relation("TransferCreatedBy", fields: [createdById], references: [id])
+  validatedBy User?          @relation("TransferValidatedBy", fields: [validatedById], references: [id])
+  shippedBy   User?          @relation("TransferShippedBy", fields: [shippedById], references: [id])
+  receivedBy  User?          @relation("TransferReceivedBy", fields: [receivedById], references: [id])
+  items       TransferItem[]
+
+  @@index([storeId, status])
+  @@index([warehouseId, status])
+  @@map("transfers")
+}
+
+model TransferItem {
+  id                String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  transferId        String   @map("transfer_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  quantityRequested Int      @map("quantity_requested")
+  quantityShipped   Int      @default(0) @map("quantity_shipped")
+  quantityReceived  Int      @default(0) @map("quantity_received")
+  unitCost          Decimal? @map("unit_cost") @db.Decimal(18, 2)
+
+  transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@unique([transferId, productId])
+  @@index([productId])
+  @@map("transfer_items")
+}
+
+// ---------------------------------------------------------------------------
+// 3.6 Inventaires
+// ---------------------------------------------------------------------------
+
+model InventorySession {
+  id            String          @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  reference     String          @unique
+  scopeType     ScopeType       @map("scope_type")
+  warehouseId   String?         @map("warehouse_id") @db.Uuid
+  storeId       String?         @map("store_id") @db.Uuid
+  status        InventoryStatus @default(DRAFT)
+  startedById   String          @map("started_by") @db.Uuid
+  validatedById String?         @map("validated_by") @db.Uuid
+  startedAt     DateTime?       @map("started_at") @db.Timestamptz
+  validatedAt   DateTime?       @map("validated_at") @db.Timestamptz
+  closedAt      DateTime?       @map("closed_at") @db.Timestamptz
+  note          String?
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  warehouse   Warehouse?      @relation(fields: [warehouseId], references: [id])
+  store       Store?          @relation(fields: [storeId], references: [id])
+  startedBy   User            @relation("InventoryStartedBy", fields: [startedById], references: [id])
+  validatedBy User?           @relation("InventoryValidatedBy", fields: [validatedById], references: [id])
+  items       InventoryItem[]
+
+  @@index([storeId, status])
+  @@index([warehouseId, status])
+  @@map("inventory_sessions")
+}
+
+model InventoryItem {
+  id                 String @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  inventorySessionId String @map("inventory_session_id") @db.Uuid
+  productId          String @map("product_id") @db.Uuid
+  theoreticalQty     Int    @map("theoretical_qty")
+  physicalQty        Int?   @map("physical_qty")
+  variance           Int?
+  justification      String?
+  initialQty         Int    @default(0) @map("initial_qty")
+  receiptsQty        Int    @default(0) @map("receipts_qty")
+  transfersInQty     Int    @default(0) @map("transfers_in_qty")
+  salesQty           Int    @default(0) @map("sales_qty")
+  transfersOutQty    Int    @default(0) @map("transfers_out_qty")
+  internalIssuesQty  Int    @default(0) @map("internal_issues_qty")
+  adjustmentsQty     Int    @default(0) @map("adjustments_qty")
+
+  session InventorySession @relation(fields: [inventorySessionId], references: [id], onDelete: Cascade)
+  product Product          @relation(fields: [productId], references: [id])
+
+  @@unique([inventorySessionId, productId])
+  @@index([productId])
+  @@map("inventory_items")
+}
+
+// ---------------------------------------------------------------------------
+// 3.7 Sorties internes
+// ---------------------------------------------------------------------------
+
+model InternalStockIssue {
+  id            String              @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  reference     String              @unique
+  scopeType     ScopeType           @map("scope_type")
+  warehouseId   String?             @map("warehouse_id") @db.Uuid
+  storeId       String?             @map("store_id") @db.Uuid
+  productId     String              @map("product_id") @db.Uuid
+  quantity      Int
+  reasonCode    InternalIssueReason @map("reason_code")
+  reasonText    String?             @map("reason_text")
+  status        InternalIssueStatus @default(DRAFT)
+  requestedById String              @map("requested_by") @db.Uuid
+  reviewedById  String?             @map("reviewed_by") @db.Uuid
+  reviewedAt    DateTime?           @map("reviewed_at") @db.Timestamptz
+  reviewNote    String?             @map("review_note")
+  storeConfirmedAt   DateTime?      @map("store_confirmed_at") @db.Timestamptz
+  storeConfirmedById String?        @map("store_confirmed_by") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  store       Store?     @relation(fields: [storeId], references: [id])
+  product     Product    @relation(fields: [productId], references: [id])
+  requestedBy User       @relation("InternalIssueRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy  User?      @relation("InternalIssueReviewedBy", fields: [reviewedById], references: [id])
+  storeConfirmedBy User?  @relation("InternalIssueStoreConfirmedBy", fields: [storeConfirmedById], references: [id])
+
+  @@index([status])
+  @@index([productId])
+  @@map("internal_stock_issues")
+}
+
+// ---------------------------------------------------------------------------
+// 3.8 Ventes et caisse
+// ---------------------------------------------------------------------------
+
+model CashSession {
+  id              String            @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  cashRegisterId  String            @map("cash_register_id") @db.Uuid
+  openedById      String            @map("opened_by") @db.Uuid
+  closedById      String?           @map("closed_by") @db.Uuid
+  status          CashSessionStatus @default(OPEN)
+  openedAt        DateTime          @default(now()) @map("opened_at") @db.Timestamptz
+  closedAt        DateTime?         @map("closed_at") @db.Timestamptz
+  openingFloatUsd Decimal           @map("opening_float_usd") @db.Decimal(18, 2)
+  openingFloatCdf Decimal           @map("opening_float_cdf") @db.Decimal(18, 0)
+  expectedUsd     Decimal?          @map("expected_usd") @db.Decimal(18, 2)
+  expectedCdf     Decimal?          @map("expected_cdf") @db.Decimal(18, 0)
+  countedUsd      Decimal?          @map("counted_usd") @db.Decimal(18, 2)
+  countedCdf      Decimal?          @map("counted_cdf") @db.Decimal(18, 0)
+  varianceUsd     Decimal?          @map("variance_usd") @db.Decimal(18, 2)
+  varianceCdf     Decimal?          @map("variance_cdf") @db.Decimal(18, 0)
+  note            String?
+
+  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
+  openedBy     User         @relation("CashSessionOpenedBy", fields: [openedById], references: [id])
+  closedBy     User?        @relation("CashSessionClosedBy", fields: [closedById], references: [id])
+  sales        Sale[]
+  expenses     Expense[]
+
+  @@index([cashRegisterId, status])
+  @@map("cash_sessions")
+}
+
+model Sale {
+  id            String       @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  number        String       @unique
+  storeId       String       @map("store_id") @db.Uuid
+  cashSessionId String       @map("cash_session_id") @db.Uuid
+  cashierId     String       @map("cashier_id") @db.Uuid
+  status        SaleStatus   @default(COMPLETED)
+  currency      CurrencyCode @default(USD)
+  subtotal      Decimal      @db.Decimal(18, 2)
+  discountTotal Decimal      @map("discount_total") @db.Decimal(18, 2)
+  total         Decimal      @db.Decimal(18, 2)
+  completedAt   DateTime     @default(now()) @map("completed_at") @db.Timestamptz
+  voidedAt      DateTime?    @map("voided_at") @db.Timestamptz
+  voidedById    String?      @map("voided_by") @db.Uuid
+  voidReason    String?      @map("void_reason")
+
+  store       Store       @relation(fields: [storeId], references: [id])
+  cashSession CashSession @relation(fields: [cashSessionId], references: [id])
+  cashier     User        @relation("SaleCashier", fields: [cashierId], references: [id])
+  voidedBy    User?       @relation("SaleVoidedBy", fields: [voidedById], references: [id])
+  items       SaleItem[]
+  payments    Payment[]
+  idempotencyKey SaleIdempotencyKey?
+
+  @@index([storeId, completedAt])
+  @@index([cashSessionId])
+  @@index([cashierId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id                   String  @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  saleId               String  @map("sale_id") @db.Uuid
+  productId            String  @map("product_id") @db.Uuid
+  referenceSnapshot    String  @map("reference_snapshot")
+  nameSnapshot         String  @map("name_snapshot")
+  barcodeSnapshot      String? @map("barcode_snapshot")
+  quantity             Int
+  officialUnitPrice    Decimal @map("official_unit_price") @db.Decimal(18, 2)
+  discountPercent      Decimal @map("discount_percent") @db.Decimal(5, 2)
+  discountAmount       Decimal @map("discount_amount") @db.Decimal(18, 2)
+  finalUnitPrice       Decimal @map("final_unit_price") @db.Decimal(18, 2)
+  lineTotal            Decimal @map("line_total") @db.Decimal(18, 2)
+  purchasePriceSnapshot Decimal @map("purchase_price_snapshot") @db.Decimal(18, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([saleId])
+  @@map("sale_items")
+}
+
+model SaleIdempotencyKey {
+  id          String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  keyHash     String   @unique @map("key_hash")
+  saleId      String   @unique @map("sale_id") @db.Uuid
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  sale      Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  createdBy User @relation("SaleIdempotencyCreatedBy", fields: [createdById], references: [id])
+
+  @@map("sale_idempotency_keys")
+}
+
+model Payment {
+  id                String        @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  saleId            String        @map("sale_id") @db.Uuid
+  method            PaymentMethod
+  currency          CurrencyCode
+  amount            Decimal       @db.Decimal(18, 2)
+  amountUsd         Decimal       @map("amount_usd") @db.Decimal(18, 2)
+  exchangeRateId    String?       @map("exchange_rate_id") @db.Uuid
+  rateSnapshot      Decimal?      @map("rate_snapshot") @db.Decimal(18, 6)
+  providerReference String?       @map("provider_reference")
+  paidAt            DateTime      @default(now()) @map("paid_at") @db.Timestamptz
+
+  sale         Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  exchangeRate ExchangeRate? @relation(fields: [exchangeRateId], references: [id])
+
+  @@index([paidAt, method])
+  @@index([saleId])
+  @@map("payments")
+}
+
+model Expense {
+  id                     String        @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  reference              String        @unique
+  status                 ExpenseStatus @default(CONFIRMED)
+  category               String
+  amount                 Decimal       @db.Decimal(18, 2)
+  currency               CurrencyCode
+  storeId                String?       @map("store_id") @db.Uuid
+  warehouseId            String?       @map("warehouse_id") @db.Uuid
+  cashRegisterId         String?       @map("cash_register_id") @db.Uuid
+  cashSessionId          String?       @map("cash_session_id") @db.Uuid
+  spentAt                DateTime      @map("spent_at") @db.Timestamptz
+  createdById            String        @map("created_by") @db.Uuid
+  cashierConfirmedAt     DateTime?     @map("cashier_confirmed_at") @db.Timestamptz
+  cashierConfirmedById   String?       @map("cashier_confirmed_by") @db.Uuid
+  description            String?
+  receiptPath            String?       @map("receipt_path")
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  store              Store?        @relation(fields: [storeId], references: [id])
+  warehouse          Warehouse?    @relation(fields: [warehouseId], references: [id])
+  cashRegister       CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  cashSession        CashSession?  @relation(fields: [cashSessionId], references: [id])
+  createdBy          User          @relation(fields: [createdById], references: [id])
+  cashierConfirmedBy User?         @relation("ExpenseCashierConfirmedBy", fields: [cashierConfirmedById], references: [id])
+
+  @@index([storeId, spentAt])
+  @@index([storeId, status])
+  @@index([warehouseId, spentAt])
+  @@index([cashRegisterId, status])
+  @@map("expenses")
+}
+
+model ExchangeRate {
+  id           String           @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  rateType     ExchangeRateType @map("rate_type")
+  baseCurrency CurrencyCode     @default(USD) @map("base_currency")
+  quoteCurrency CurrencyCode    @default(CDF) @map("quote_currency")
+  rate         Decimal          @db.Decimal(18, 6)
+  validFrom    DateTime         @map("valid_from") @db.Timestamptz
+  validTo      DateTime?        @map("valid_to") @db.Timestamptz
+  createdById  String           @map("created_by") @db.Uuid
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  createdBy User      @relation(fields: [createdById], references: [id])
+  payments  Payment[]
+
+  @@index([rateType, validFrom])
+  @@map("exchange_rates")
+}
+
+// ---------------------------------------------------------------------------
+// 3.9 Paramètres, notifications, audit
+// ---------------------------------------------------------------------------
+
+model AppSetting {
+  key         String           @id
+  group       String
+  value       Json
+  valueType   SettingValueType @map("value_type")
+  isCritical  Boolean          @default(false) @map("is_critical")
+  description String?
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  updatedById String?          @map("updated_by") @db.Uuid
+
+  updatedBy User? @relation(fields: [updatedById], references: [id])
+
+  @@index([group])
+  @@map("app_settings")
+}
+
+model DocumentSequence {
+  id         String               @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  code       DocumentSequenceCode @unique
+  prefix     String
+  nextNumber Int                  @default(1) @map("next_number")
+  padding    Int                  @default(6)
+
+  @@map("document_sequences")
+}
+
+model Notification {
+  id         String                @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  type       NotificationType
+  severity   NotificationSeverity  @default(INFO)
+  title      String
+  body       String
+  entityType String?               @map("entity_type")
+  entityId   String?               @map("entity_id") @db.Uuid
+  storeId    String?               @map("store_id") @db.Uuid
+  createdAt  DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  readAt     DateTime?             @map("read_at") @db.Timestamptz
+  readById   String?               @map("read_by") @db.Uuid
+
+  store  Store? @relation(fields: [storeId], references: [id])
+  readBy User?  @relation("NotificationReadBy", fields: [readById], references: [id])
+
+  @@index([createdAt])
+  @@index([storeId, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("eyano_uuid_v7()")) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  storeId    String?  @map("store_id") @db.Uuid
+  oldValue   Json?    @map("old_value") @db.JsonB
+  newValue   Json?    @map("new_value") @db.JsonB
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  actor User?  @relation(fields: [actorId], references: [id])
+  store Store? @relation(fields: [storeId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}

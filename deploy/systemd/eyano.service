@@ -1,0 +1,17 @@
+[Unit]
+Description=Eyano API (NestJS)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=eyano
+WorkingDirectory=/var/www/eyano/backend
+EnvironmentFile=/etc/eyano/api.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/eyano/api.log
+StandardError=append:/var/log/eyano/api-error.log
+
+[Install]
+WantedBy=multi-user.target
